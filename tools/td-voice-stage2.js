@@ -1,0 +1,24 @@
+(async()=>{
+ const out=[];const wait=ms=>new Promise(r=>setTimeout(r,ms));const until=async(fn,label)=>{const end=Date.now()+15000;while(!fn()){if(Date.now()>end)throw Error(label);await wait(40);}};
+ const button=label=>[...document.querySelectorAll('button')].find(b=>b.getClientRects().length&&!b.closest('dialog:not([open])')&&(b.getAttribute('aria-label')===label||b.textContent.trim()===label));
+ const click=async label=>{const b=button(label);if(!b||b.disabled)throw Error('Botão '+label);b.click();await wait(400);};
+ const assert=(ok,label)=>{if(!ok)throw Error(label);out.push(label);};
+ await until(()=>button('Ver conversa em texto'),'Demonstração terminou');
+ assert(document.querySelector('.td-voice-answer').textContent.includes('respeito'),'Resposta aparece na tela de voz');
+ await click('Ver conversa em texto');await until(()=>document.querySelector('.td-answer-text'),'Conversa visível');
+ assert(document.querySelector('.td-answer-text').textContent.includes('respeito'),'Texto e voz usam a mesma conversa');
+ assert(document.querySelector('#pergunta').value==='Meu rascunho fica aqui','Pergunta por voz não apaga rascunho de texto');
+ await wait(350);let store=JSON.parse(localStorage.getItem('tiraduvidas.conversations.v1'));const item=store.items.find(c=>c.id===store.activeId);
+ assert(item.mode==='text'&&item.messages.length===2,'Histórico guarda modo e mensagens');
+ await click('Voz');assert(document.querySelector('.td-voice-answer').textContent.includes('respeito'),'Alternar novamente conserva resposta');
+ await click('Texto');await click('Nova conversa');
+ assert(button('Voz').getAttribute('aria-pressed')==='true','Nova conversa começa em voz');
+ assert(!document.querySelector('.td-voice-answer'),'Nova conversa não herda resposta anterior');
+ await click('Histórico de conversas');const saved=[...document.querySelectorAll('.td-history-item')].find(b=>b.textContent.includes('assertiva'));saved.click();await wait(500);
+ assert(button('Texto').getAttribute('aria-pressed')==='true','Retomada restaura o último modo utilizado');
+ assert(document.querySelector('#pergunta').value==='Meu rascunho fica aqui','Histórico restaura rascunho');
+ await click('Voz');
+ assert(performance.getEntriesByType('resource').every(r=>new URL(r.name).origin===location.origin),'Nenhuma chamada externa de voz');
+ assert(document.documentElement.scrollWidth<=innerWidth,'Sem rolagem horizontal');
+ return out;
+})();

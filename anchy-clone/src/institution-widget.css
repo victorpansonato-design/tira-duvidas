@@ -1,0 +1,1255 @@
+
+:host {
+  --caw-primary: #0f6bd7;
+  --caw-primary-text: #ffffff;
+  /* bolha flutuante (balao da Ana): cores de marca FIXAS — nao seguem preset,
+     modo nem primaryColor.
+     O TAMANHO e token porque tres medidas derivam dele (bottom do painel e as
+     duas reservas de faixa em tela cheia): repetido a mao, crescer a bolha a
+     punha por cima do composer sem ninguem notar. */
+  --caw-launcher-ink: #1b2f6e;
+  --caw-launcher-ring: #9fbcf2;
+  --caw-launcher-size: 64px;
+  --caw-bg: #ffffff;
+  --caw-surface: #f2f4f7;
+  --caw-text: #1c2733;
+  --caw-muted: #6b7684;
+  --caw-border: #e4e7ec;
+  --caw-field-border: #cfd6de;
+  --caw-danger: #e02424;
+  --caw-danger-text: #ffffff;
+  --caw-warn-bg: #fff3cd;
+  --caw-warn-text: #664d03;
+  --caw-radius: 14px;
+  /* Header do chat: faixa CLARA com os elementos na cor primaria. Vive em
+     tokens PROPRIOS porque o preset escuro precisa inverte-la sem que nenhuma
+     regra saiba do modo — e porque header e bolha de mensagem deixaram de
+     compartilhar a mesma cor de fundo. TODO preset define os dois: um preset
+     escuro que os omita cai no default CLARO daqui e nasce com faixa branca. */
+  --caw-header-bg: #ffffff;
+  --caw-header-text: var(--caw-primary);
+  /* layout.padding: folga EXTRA nas bordas que encostam na moldura do painel.
+     Precisa ter unidade (0px, nao 0) — os calc() abaixo somam medidas. */
+  --caw-gutter: 0px;
+  all: initial;
+}
+/* Isolamento de fonte: propriedades herdaveis atravessam a fronteira do
+   shadow (regras "* {...!important}" da pagina atingem o elemento HOST e
+   os filhos herdam) — por isso a fonte e declarada AQUI, num elemento
+   interno que nenhum seletor da pagina alcanca. */
+.caw-root {
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 15px;
+  line-height: 1.4;
+}
+*, *::before, *::after { box-sizing: border-box; }
+/* [hidden] tem que vencer os display: flex/block das classes (mesma
+   especificidade — sem !important a UA rule perde e o elemento reaparece) */
+[hidden] { display: none !important; }
+button { font: inherit; cursor: pointer; border: 0; background: none; }
+button:focus-visible, input:focus-visible, a:focus-visible {
+  outline: 2px solid var(--caw-primary);
+  outline-offset: 2px;
+}
+
+.caw-root { position: fixed; bottom: 20px; z-index: 2147483000; }
+.caw-root[data-pos='right'] { right: 20px; }
+.caw-root[data-pos='left'] { left: 20px; }
+
+.caw-launcher {
+  display: flex; align-items: center;
+  border-radius: calc(var(--caw-launcher-size) / 2);
+  position: relative;
+}
+.caw-root[data-pos='left'] .caw-launcher { flex-direction: row-reverse; }
+.caw-launcher-msg {
+  margin-right: calc(var(--caw-launcher-size) * -.5);
+  padding: 7px calc(var(--caw-launcher-size) * .5 + 12px) 7px 16px;
+  background: #ffffff; color: var(--caw-launcher-ink);
+  border: 2px solid var(--caw-launcher-ring); border-radius: 16px;
+  box-shadow: 0 4px 14px rgba(0,0,0,.16);
+  font-size: 13px; font-weight: 700; line-height: 1.3;
+  text-align: center; white-space: nowrap;
+}
+.caw-root[data-pos='left'] .caw-launcher-msg {
+  margin: 0 0 0 calc(var(--caw-launcher-size) * -.5);
+  padding: 7px 16px 7px calc(var(--caw-launcher-size) * .5 + 12px);
+}
+.caw-launcher-msg span { display: block; }
+.caw-launcher-msg { transition: opacity .3s ease, transform .3s ease; }
+.caw-launcher-msg[data-saindo='1'] { opacity: 0; transform: translateX(12px); }
+.caw-root[data-pos='left'] .caw-launcher-msg[data-saindo='1'] { transform: translateX(-12px); }
+.caw-root[data-open='1'] .caw-launcher-msg { display: none; }
+.caw-launcher-img {
+  position: relative; flex: none;
+  width: var(--caw-launcher-size); height: var(--caw-launcher-size);
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,.25));
+}
+.caw-launcher-fallback {
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; background: var(--caw-launcher-ink); color: #ffffff;
+}
+.caw-launcher-fallback svg { width: 46%; height: 46%; fill: currentColor; }
+.caw-badge {
+  position: absolute; top: -4px; right: -4px; min-width: 20px; height: 20px;
+  border-radius: 10px; padding: 0 5px;
+  background: var(--caw-danger); color: var(--caw-danger-text); font-size: 12px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.caw-root[data-pos='left'] .caw-badge { right: auto; left: -4px; }
+
+.caw-panel {
+  position: absolute; bottom: calc(var(--caw-launcher-size) + 16px);
+  width: 370px; height: 560px;
+  /* 20px do respiro do root + 16px do vao acima da bolha + 18px de folga no
+     topo da viewport */
+  max-height: calc(100vh - var(--caw-launcher-size) - 54px);
+  background: var(--caw-bg); border-radius: var(--caw-radius);
+  box-shadow: 0 12px 40px rgba(0,0,0,.28);
+  display: flex; flex-direction: column; overflow: hidden;
+  color: var(--caw-text);
+  transition: width .18s ease, height .18s ease;
+}
+/* expandido: dobra o painel, respeitando o viewport (nunca estoura a tela) */
+.caw-panel[data-expanded='1'] {
+  width: min(740px, calc(100vw - 40px));
+  height: min(1120px, calc(100vh - 110px));
+}
+.caw-root[data-pos='right'] .caw-panel { right: 0; }
+.caw-root[data-pos='left'] .caw-panel { left: 0; }
+.caw-panel[hidden] { display: none; }
+
+/* layout.hideFloatingButton: sem bolha embaixo, o painel encosta no canto
+   (o bottom derivado do tamanho da bolha existe so para dar lugar a ela) */
+.caw-root[data-launcher='hidden'] .caw-panel { bottom: 0; }
+
+/* layout.fullscreen: o painel toma a tela inteira — dvw/dvh acompanham a barra
+   de endereco do mobile (fallback vw/vh para browser sem suporte). Vence o
+   data-expanded por especificidade; de todo modo, em fullscreen o botao de
+   expandir nem e renderizado. */
+.caw-root[data-fullscreen='1'] .caw-panel,
+.caw-root[data-fullscreen='1'] .caw-panel[data-expanded='1'] {
+  position: fixed; inset: 0;
+  width: 100vw; height: 100vh;
+  width: 100dvw; height: 100dvh;
+  max-width: none; max-height: none;
+  border-radius: 0;
+}
+
+/* ---- bolha x painel em TELA CHEIA ----
+   Com o painel ocupando a tela (breakpoint mobile ou layout.fullscreen), a bolha
+   fica ancorada no mesmo canto do botao Enviar — medido em 375px: 30x30px de
+   sobreposicao — e vence o painel no empilhamento porque vem depois no DOM.
+   Tocar em "enviar" tinha chance de FECHAR o chat (e, nas telas Inicio/
+   Mensagens, a bolha cobre a aba "Mensagens").
+   Havendo como fechar pelo header, a bolha sai de cena enquanto o chat esta
+   aberto — o que todo chat embarcado faz. Se o host escondeu os controles
+   (hideControls) mas manteve a bolha, ela e a UNICA saida: entao o painel
+   reserva a faixa da base para ela. Sem bolha, essa reserva nao deve existir. */
+.caw-root[data-fullscreen='1'][data-open='1']:not([data-controls='hidden']) .caw-launcher {
+  display: none;
+}
+.caw-root[data-fullscreen='1'][data-open='1'][data-controls='hidden']:not([data-launcher='hidden']) .caw-panel {
+  /* bolha + 20px do respiro do root */
+  padding-bottom: calc(var(--caw-launcher-size) + 20px);
+}
+
+.caw-expand {
+  color: var(--caw-header-text); opacity: .85;
+  padding: 4px 6px; display: flex; align-items: center;
+}
+.caw-expand:hover { opacity: 1; }
+.caw-expand svg { width: 18px; height: 18px; fill: currentColor; display: block; }
+.caw-expand .caw-ico-collapse { display: none; }
+.caw-panel[data-expanded='1'] .caw-ico-expand { display: none; }
+.caw-panel[data-expanded='1'] .caw-ico-collapse { display: inline-flex; }
+
+/* O gutter entra so nas bordas EXTERNAS: lateral de todas as areas, topo do
+   header/hero e base do composer/nav. O espacamento entre areas fica igual e
+   os fundos seguem sangrando de ponta a ponta. */
+/* gap 16px (era 10): e o que permite ao voltar ter 44px de alvo sem cobrir o
+   titulo — da borda do painel ele so alcanca 32px, e os 12px que faltam saem
+   deste vao, ainda sobrando 4px mortos. O titulo anda 6px para a direita. */
+/* gap 10px (era 16): o hamburguer e mais largo que o antigo ‹ e o titulo
+   precisa do resto. Os alvos de toque de 44px continuam garantidos pelos
+   ::after de cada botao, que crescem sobre o gap. */
+.caw-header {
+  background: var(--caw-header-bg); color: var(--caw-header-text);
+  padding: calc(12px + var(--caw-gutter)) calc(14px + var(--caw-gutter)) 12px;
+  display: flex; align-items: center; gap: 10px;
+  border-bottom: 1px solid var(--caw-border);
+}
+.caw-header-info { flex: 1; min-width: 0; }
+/* Uma linha cada, cortando com reticencias. O hamburguer e mais largo que o
+   antigo ‹ (34px contra ~20) e, com o chip do logo ao lado, o subtitulo
+   passou a QUEBRAR em duas linhas — o header crescia e o texto ficava torto.
+   Cortar e melhor que empurrar: o titulo e o nome do chat, nao conteudo. */
+.caw-title, .caw-subtitle {
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.caw-title { font-weight: 700; font-size: 16px; }
+.caw-subtitle { font-size: 12.5px; opacity: .85; }
+.caw-close { color: var(--caw-header-text); font-size: 22px; line-height: 1; padding: 4px 8px; }
+/* Alvo de toque do header (desenho: 20x28 e 31x30) — cresce sobre o padding e
+   sobre o gap, sem ocupar layout. O expandir fica FORA de proposito: ele e o
+   fechar crescendo juntos se sobreporiam, e fechar o chat querendo expandir e
+   pior que alvo pequeno (e ele nem aparece no mobile). */
+.caw-menu, .caw-close { position: relative; }
+.caw-menu::after {
+  content: ''; position: absolute; left: -8px; right: -8px;
+  top: 50%; height: 44px; margin-top: -22px;
+}
+.caw-close::after {
+  content: ''; position: absolute; left: 50%; width: 44px; margin-left: -22px;
+  top: 50%; height: 44px; margin-top: -22px;
+}
+
+.caw-conn {
+  background: var(--caw-warn-bg); color: var(--caw-warn-text); font-size: 12.5px;
+  padding: 4px calc(12px + var(--caw-gutter)); text-align: center;
+}
+.caw-conn[hidden] { display: none; }
+
+.caw-notice {
+  background: var(--caw-warn-bg); color: var(--caw-warn-text); font-size: 12.5px;
+  padding: 6px calc(12px + var(--caw-gutter)); text-align: center;
+}
+.caw-notice[hidden] { display: none; }
+
+/* ---- Transferencia agendada ----
+   Faixa logo abaixo do header enquanto o pedido feito com a fila fechada
+   espera a abertura. Ambar = os tokens de aviso (--caw-warn-*), que ja existem
+   nos quatro presets: AA no claro (#8f5c14 sobre #fbf1df, 5,3:1) e no escuro.
+   Nasce RECOLHIDA (uma linha, 48px); o detalhe abre por grid-template-rows,
+   que anima a altura real sem medir nada em JS. */
+.caw-sched {
+  background: var(--caw-warn-bg); color: var(--caw-warn-text);
+  border-bottom: 1px solid color-mix(in srgb, var(--caw-warn-text) 22%, transparent);
+}
+.caw-sched[hidden] { display: none; }
+.caw-sched-head {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px;
+  padding: 6px calc(14px + var(--caw-gutter));
+  background: none; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.caw-sched-head:focus-visible { outline: 2px solid currentColor; outline-offset: -3px; }
+.caw-sched-ico, .caw-sched-chev { flex: none; display: flex; }
+.caw-sched-ico { width: 18px; height: 18px; }
+.caw-sched-chev { width: 20px; height: 20px; transform: rotate(180deg); transition: transform .2s ease; }
+.caw-sched[data-open] .caw-sched-chev { transform: none; }
+.caw-sched-ico svg, .caw-sched-chev svg { width: 100%; height: 100%; fill: currentColor; }
+.caw-sched-texts { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; line-height: 1.25; }
+.caw-sched-title {
+  font-size: 13px; font-weight: 700;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.caw-sched-sub {
+  font-size: 12.5px; font-variant-numeric: tabular-nums;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.caw-sched-detail { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .22s ease; }
+.caw-sched[data-open] .caw-sched-detail { grid-template-rows: 1fr; }
+.caw-sched-inner { min-height: 0; overflow: hidden; }
+/* rotulo fixo de 92px a esquerda, valor com mais peso: le-se em coluna; o
+   recuo de 42px alinha tudo ao titulo, nao ao relogio */
+.caw-sched-rows {
+  display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 5px 12px; margin: 0;
+  padding: 0 calc(14px + var(--caw-gutter)) 10px calc(42px + var(--caw-gutter));
+  font-size: 13px; line-height: 1.35; font-variant-numeric: tabular-nums;
+}
+.caw-sched-rows dt { font-weight: 400; }
+.caw-sched-rows dd { margin: 0; min-width: 0; color: var(--caw-text); font-weight: 600; overflow-wrap: anywhere; }
+.caw-sched-actions {
+  padding: 2px calc(14px + var(--caw-gutter)) 12px calc(42px + var(--caw-gutter));
+  border-top: 1px solid color-mix(in srgb, var(--caw-warn-text) 16%, transparent);
+  padding-top: 8px;
+}
+.caw-sched-actions[data-stage='idle'] {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+.caw-sched-hint { font-size: 12.5px; min-width: 0; }
+.caw-sched-line { margin: 0 0 10px; font-size: 12.5px; min-height: 1.35em; }
+.caw-sched-line[data-error] { color: var(--caw-danger); font-weight: 600; }
+.caw-sched-reasons { margin-top: 0; }
+.caw-sched-reason { font: inherit; font-size: 14px; cursor: pointer; }
+/* o motivo tocado fica aceso enquanto cancela; os outros apagam */
+.caw-sched-reason[data-chosen]:disabled {
+  opacity: 1; background: var(--caw-primary); color: var(--caw-primary-text);
+}
+.caw-sched-back {
+  min-height: 44px; margin-top: 4px; padding: 0 2px;
+  background: none; border: 0; color: inherit; font: inherit; font-size: 13px; font-weight: 600;
+  text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+}
+.caw-sched-back:disabled { opacity: .5; cursor: default; }
+/* Marcador do pedido na conversa: a mesma pilula discreta das outras marcas do
+   sistema — centralizada, sem cor de quem fala. */
+.caw-sched-marker {
+  align-self: center; max-width: 90%; margin: 2px 0 6px; padding: 3px 10px;
+  border: 1px solid var(--caw-border); border-radius: 999px; background: var(--caw-bg);
+  color: var(--caw-muted); font-size: 11.5px; line-height: 1.4; text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+/* Ponto no hamburguer enquanto ha pedido pendente: o ::after ja e o alvo de
+   toque, entao o ponto mora no ::before. O anel da cor do header o separa do
+   botao solido. */
+.caw-menu[data-dot]::before {
+  content: ''; position: absolute; top: -3px; right: -3px;
+  width: 9px; height: 9px; border-radius: 50%;
+  background: #e07b00; box-shadow: 0 0 0 2px var(--caw-header-bg);
+}
+
+/* "+" no header da lista (nova conversa) */
+.caw-newconv {
+  color: var(--caw-header-text); opacity: .85;
+  font-size: 24px; line-height: 1; padding: 2px 6px;
+}
+.caw-newconv:hover { opacity: 1; }
+
+/* CTA secundario da home ("Iniciar nova conversa") */
+.caw-cta-secondary { font-weight: 600; color: var(--caw-primary); }
+
+/* banner de conversa arquivada (substitui o composer) */
+.caw-ended {
+  display: flex; flex-direction: column; gap: 8px; align-items: center;
+  padding: 12px calc(16px + var(--caw-gutter)) calc(12px + var(--caw-gutter));
+  background: var(--caw-bg);
+  border-top: 1px solid var(--caw-border);
+  color: var(--caw-muted); font-size: 13px; text-align: center;
+}
+.caw-ended-btn {
+  padding: 8px 14px; border-radius: var(--caw-radius);
+  background: var(--caw-primary); color: var(--caw-primary-text);
+  font-weight: 700; font-size: 14px;
+}
+
+/* "Encerrar atendimento" do aluno: faixa discreta acima do composer e a folha
+   de confirmacao com a pergunta opcional. Alvos com 44px de altura (o minimo
+   de toque do resto do widget). */
+.caw-endbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 6px calc(12px + var(--caw-gutter));
+  background: var(--caw-bg); border-top: 1px solid var(--caw-border);
+  color: var(--caw-muted); font-size: 13px;
+}
+.caw-endbar-btn {
+  min-height: 44px; padding: 0 12px; border-radius: var(--caw-radius);
+  border: 1px solid var(--caw-field-border); background: var(--caw-bg);
+  color: var(--caw-primary); font-weight: 700; font-size: 13px; white-space: nowrap;
+}
+.caw-sheet-overlay {
+  position: absolute; inset: 0; z-index: 6;
+  display: flex; align-items: flex-end;
+  background: rgba(0, 0, 0, 0.45);
+}
+.caw-sheet {
+  width: 100%; display: flex; flex-direction: column; gap: 10px;
+  padding: 18px calc(16px + var(--caw-gutter)) calc(16px + var(--caw-gutter));
+  background: var(--caw-bg); color: var(--caw-text);
+  border-radius: 16px 16px 0 0; border-top: 1px solid var(--caw-border);
+}
+.caw-sheet-title { font-size: 16px; font-weight: 700; }
+.caw-sheet-text { margin: 0; color: var(--caw-muted); font-size: 14px; line-height: 1.45; }
+.caw-sheet-question { margin-top: 4px; font-size: 14px; font-weight: 600; }
+.caw-sheet-optional { font-weight: 400; color: var(--caw-muted); }
+.caw-sheet-choices { display: flex; gap: 8px; }
+.caw-sheet-choice {
+  flex: 1; min-height: 44px; border-radius: var(--caw-radius);
+  border: 1px solid var(--caw-field-border); background: var(--caw-bg);
+  color: var(--caw-text); font-size: 14px; font-weight: 600;
+}
+.caw-sheet-choice[aria-pressed="true"] {
+  border-color: var(--caw-primary); background: var(--caw-surface); color: var(--caw-primary);
+}
+.caw-sheet-comment { display: flex; flex-direction: column; gap: 6px; }
+.caw-sheet-comment[hidden] { display: none; }
+.caw-sheet-comment-label { font-size: 14px; font-weight: 600; }
+.caw-sheet-comment-input {
+  width: 100%; min-height: 76px; resize: vertical; box-sizing: border-box;
+  padding: 10px 12px; border-radius: var(--caw-radius);
+  border: 1px solid var(--caw-field-border); background: var(--caw-bg);
+  color: var(--caw-text); font: inherit; font-size: 15px; line-height: 1.4;
+}
+.caw-sheet-comment-input:focus { outline: 2px solid var(--caw-primary); outline-offset: 0; }
+.caw-sheet-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+.caw-sheet-back, .caw-sheet-confirm {
+  min-height: 44px; padding: 0 16px; border-radius: var(--caw-radius);
+  font-size: 14px; font-weight: 700;
+}
+.caw-sheet-back { background: transparent; border: 1px solid var(--caw-field-border); color: var(--caw-text); }
+.caw-sheet-confirm { background: var(--caw-primary); color: var(--caw-primary-text); border: 0; }
+
+.caw-messages {
+  flex: 1; overflow-y: auto; padding: 14px calc(12px + var(--caw-gutter));
+  display: flex; flex-direction: column; gap: 8px;
+  background: var(--caw-surface);
+}
+
+/* Boas-vindas na conversa VAZIA: margin: auto centra nos dois eixos dentro
+   da coluna flex, sem posicionamento absoluto — some sozinho quando a primeira
+   bolha entra (o no e removido no render). Em em para acompanhar o "T". */
+.caw-welcome {
+  margin: auto; display: flex; flex-direction: column; gap: 6px;
+  padding: 20px 14px; text-align: center;
+}
+.caw-welcome-title {
+  font-size: 1.3em; font-weight: 800; line-height: 1.25;
+  color: var(--caw-primary); text-wrap: balance;
+}
+.caw-welcome-sub { font-size: .93em; color: var(--caw-primary); opacity: .78; }
+/* Atalhos da saudacao: duas colunas que viram uma quando nao cabem, para o
+   rotulo nunca ser cortado (o texto e do host e pode ser longo). */
+.caw-welcome-chips {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;
+  margin-top: 14px;
+}
+.caw-chip {
+  flex: 1 1 44%; min-width: 132px; max-width: 100%;
+  padding: 10px 14px; border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--caw-primary) 28%, transparent);
+  background: var(--caw-surface, #fff); color: var(--caw-primary);
+  font: inherit; font-size: .92em; line-height: 1.2; cursor: pointer;
+  text-align: center; word-break: break-word;
+}
+.caw-chip:hover { background: color-mix(in srgb, var(--caw-primary) 8%, var(--caw-surface, #fff)); }
+.caw-chip:focus-visible { outline: 2px solid var(--caw-primary); outline-offset: 2px; }
+.caw-chip:disabled { opacity: .5; cursor: default; }
+.caw-load-older {
+  align-self: center; font-size: 12.5px; color: var(--caw-primary);
+  padding: 4px 10px; text-decoration: underline;
+}
+
+/* position: relative ancora o botao de responder na faixa lateral livre.
+   O .caw-msg e uma LINHA (avatar + pilha); o empilhamento vertical desceu para
+   o .caw-stack. align-items aqui e o eixo VERTICAL: o avatar encosta no topo
+   da primeira bolha, nao no meio do bloco. */
+.caw-msg { max-width: 82%; display: flex; align-items: flex-start; position: relative; }
+.caw-msg[data-dir='INBOUND'] { align-self: flex-end; }
+.caw-msg[data-dir='OUTBOUND'] { align-self: flex-start; }
+/* + a largura do avatar e do vao: sem isso a resposta perderia 36px de linha
+   util so por ganhar o selo ao lado. Condicionada ao data-avatar do root porque
+   a COLUNA do avatar so existe quando o host mandou logo/avatarUrl — sem ela a
+   compensacao nao compensa nada, so deixa a resposta mais larga que a pergunta. */
+.caw-root[data-avatar='1'] .caw-msg[data-dir='OUTBOUND'] {
+  max-width: calc(82% + 36px);
+}
+/* mesma compensacao do lado do aluno, quando a foto de cadastro dele existe */
+.caw-root[data-foto='1'] .caw-msg[data-dir='INBOUND'] {
+  max-width: calc(82% + 36px);
+}
+.caw-stack { display: flex; flex-direction: column; min-width: 0; }
+.caw-msg[data-dir='INBOUND'] .caw-stack { align-items: flex-end; }
+.caw-msg[data-dir='OUTBOUND'] .caw-stack { align-items: flex-start; }
+
+/* Avatar das respostas: circulo de 28px + 8px de vao = os 36px somados acima.
+   caw-avatar-vazio e a MESMA caixa sem imagem — bolha seguinte da sequencia,
+   ou logo que falhou ao carregar. flex: none porque a caixa nao pode encolher
+   quando a bolha e larga. */
+.caw-avatar {
+  flex: none; width: 28px; height: 28px; margin-right: 8px; margin-top: 2px;
+  border-radius: 50%; overflow: hidden; background: var(--caw-bg);
+  border: 1px solid var(--caw-border);
+  display: flex; align-items: center; justify-content: center;
+}
+.caw-avatar-img { width: 100%; height: 100%; object-fit: contain; display: block; }
+/* foto de pessoa preenche o circulo; o logo segue com contain */
+.caw-avatar-foto { object-fit: cover; }
+/* o avatar com foto e clicavel: botao sem cara de botao */
+.caw-avatar-btn { padding: 0; cursor: zoom-in; }
+
+/* Retrato ampliado: cobre o PAINEL, nao a pagina do host — o widget nao pode
+   escurecer o site de quem embeda. */
+.caw-foto-overlay {
+  position: absolute; inset: 0; z-index: 6;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px; background: rgba(0, 0, 0, 0.72);
+}
+.caw-foto-img {
+  max-width: 100%; max-height: 100%; object-fit: contain;
+  border-radius: 12px; display: block;
+}
+.caw-foto-close {
+  position: absolute; top: 10px; right: 10px;
+  width: 32px; height: 32px; border-radius: 50%;
+  border: 0; background: rgba(255, 255, 255, 0.92); color: #111;
+  font-size: 20px; line-height: 1; cursor: pointer;
+}
+.caw-msg[data-dir='INBOUND'] .caw-avatar { margin-right: 0; margin-left: 8px; }
+.caw-avatar-vazio { background: none; border-color: transparent; }
+.caw-bubble {
+  padding: 9px 12px; border-radius: 12px; white-space: pre-wrap;
+  word-break: break-word;
+}
+.caw-msg[data-dir='INBOUND'] .caw-bubble {
+  background: var(--caw-primary); color: var(--caw-primary-text);
+  border-bottom-right-radius: 4px;
+}
+.caw-msg[data-dir='OUTBOUND'] .caw-bubble {
+  background: var(--caw-bg); color: var(--caw-text);
+  border-bottom-left-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,.08);
+}
+/* links clicaveis dentro da bolha (ex.: link do portal financeiro) */
+.caw-link {
+  color: inherit; text-decoration: underline; font-weight: 600;
+  word-break: break-all;
+}
+.caw-msg[data-dir='OUTBOUND'] .caw-link { color: var(--caw-primary); }
+/* nome do atendente (so em mensagem de agente) — discreto no topo da bolha */
+.caw-sender {
+  font-size: 12px; font-weight: 700; color: var(--caw-primary);
+  margin-bottom: 3px; line-height: 1.2;
+}
+.caw-msg[data-pending='1'] { opacity: .65; }
+.caw-meta {
+  font-size: 11px; color: var(--caw-muted); margin-top: 2px;
+  display: flex; gap: 4px; align-items: center;
+}
+.caw-ticks { letter-spacing: -2px; }
+.caw-edited { font-style: italic; }
+/* apagada: mesmo lugar, sem a cor de quem escreveu */
+.caw-msg[data-deleted='1'] .caw-bubble.caw-gone {
+  background: transparent; color: var(--caw-muted); font-style: italic;
+  border: 1px dashed var(--caw-field-border); box-shadow: none;
+}
+.caw-quote-gone { font-style: italic; }
+.caw-bubble[tabindex]:focus-visible { outline: 2px solid var(--caw-launcher-ink); outline-offset: 2px; }
+.caw-ticks[data-status='READ'] { color: var(--caw-primary); font-weight: 700; }
+.caw-retry { color: var(--caw-danger); font-size: 12px; text-decoration: underline; }
+
+/* citacao dentro da bolha (responder). Barra lateral + autor em destaque, como
+   o WhatsApp; o botao inteiro e clicavel e rola ate a original. */
+.caw-quote {
+  display: block; width: 100%; text-align: left; margin-bottom: 6px;
+  padding: 5px 9px; border-left: 3px solid currentColor; border-radius: 5px;
+  background: rgba(127,127,127,.16); font-size: 12.5px; line-height: 1.35;
+}
+.caw-quote-author { display: block; font-weight: 700; margin-bottom: 1px; }
+.caw-msg[data-dir='OUTBOUND'] .caw-quote { color: var(--caw-primary); }
+/* o trecho e sempre UMA linha: a citacao nao pode empurrar a conversa */
+.caw-quote-text {
+  display: block; color: var(--caw-text); opacity: .85;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.caw-msg[data-dir='INBOUND'] .caw-quote-text { color: var(--caw-primary-text); }
+
+/* Responder: no arraste (toque) ou neste botao (mouse). Ele e ABSOLUTO na
+   faixa lateral livre — a mensagem para em 82% da largura — entao nao ocupa
+   linha nenhuma e nao encosta em alvo de toque nenhum. So existe onde ha
+   hover de verdade: no celular ele nunca aparece, e la o gesto e o arraste. */
+.caw-reply-btn {
+  position: absolute; top: 2px; width: 26px; height: 26px;
+  display: none; align-items: center; justify-content: center;
+  border-radius: 50%; background: var(--caw-bg); color: var(--caw-muted);
+  box-shadow: 0 1px 3px rgba(0,0,0,.18);
+}
+.caw-reply-btn svg { width: 15px; height: 15px; fill: currentColor; }
+.caw-msg[data-dir='INBOUND'] .caw-reply-btn { left: -32px; }
+.caw-msg[data-dir='OUTBOUND'] .caw-reply-btn { right: -32px; }
+@media (hover: hover) {
+  .caw-msg:hover .caw-reply-btn, .caw-reply-btn:focus-visible { display: flex; }
+  .caw-reply-btn:hover { color: var(--caw-primary); }
+}
+
+/* Reagir: mesmo gutter de 32px do responder, uma linha abaixo — em -62px o
+   botao sairia do vao livre (a bolha ocupa 82%) e seria cortado. */
+.caw-react-btn {
+  position: absolute; top: 32px; width: 26px; height: 26px;
+  display: none; align-items: center; justify-content: center;
+  border-radius: 50%; background: var(--caw-bg); font-size: 13px; line-height: 1;
+  box-shadow: 0 1px 3px rgba(0,0,0,.18); filter: grayscale(1); opacity: .75;
+}
+.caw-msg[data-dir='INBOUND'] .caw-react-btn { left: -32px; }
+.caw-msg[data-dir='OUTBOUND'] .caw-react-btn { right: -32px; }
+@media (hover: hover) {
+  .caw-msg:hover .caw-react-btn, .caw-react-btn:focus-visible { display: flex; }
+  .caw-react-btn:hover { filter: none; opacity: 1; }
+}
+/* Paleta (a whitelist do servidor). 42px por opcao x 6 + 5 vaos de 4 = 272px,
+   dentro dos 288 da bolha: com 44 estouraria e as opcoes quebrariam em duas
+   linhas, empilhando alvos de toque. */
+.caw-react-picker {
+  display: flex; gap: 4px; margin-top: 6px; padding: 4px;
+  border-radius: 999px; background: var(--caw-bg);
+  box-shadow: 0 2px 10px rgba(0,0,0,.16);
+}
+.caw-react-opt {
+  width: 42px; height: 42px; border-radius: 50%; background: none;
+  font-size: 20px; line-height: 1;
+}
+.caw-react-opt:hover, .caw-react-opt[data-on='1'] { background: var(--caw-surface); }
+
+/* "⋯" da propria bolha: o vao do reagir (que so existe na recebida) */
+.caw-more-btn {
+  position: absolute; top: 32px; left: -32px; width: 26px; height: 26px;
+  display: none; align-items: center; justify-content: center;
+  border-radius: 50%; background: var(--caw-bg); color: var(--caw-muted);
+  box-shadow: 0 1px 3px rgba(0,0,0,.18); font-size: 16px; line-height: 1;
+}
+.caw-more-btn[aria-expanded='true'] { display: flex; }
+@media (hover: hover) {
+  .caw-msg:hover .caw-more-btn, .caw-more-btn:focus-visible { display: flex; }
+  .caw-more-btn:hover { color: var(--caw-primary); }
+}
+.caw-actions-menu {
+  position: absolute; z-index: 3; top: 100%; right: 0; min-width: 210px;
+  display: grid; gap: 2px; padding: 6px; border-radius: 10px;
+  background: var(--caw-bg); box-shadow: 0 8px 24px rgba(15,30,60,.22);
+}
+.caw-menu-item, .caw-sheet-row {
+  display: flex; flex-direction: column; justify-content: center; align-items: flex-start;
+  min-height: 44px; padding: 4px 10px; border-radius: 7px; text-align: left; color: var(--caw-text);
+}
+.caw-menu-item:hover, .caw-menu-item:focus-visible { background: var(--caw-surface); outline: none; }
+.caw-menu-label { font-size: 14px; font-weight: 600; }
+.caw-menu-hint { font-size: 11.5px; color: var(--caw-muted); }
+.caw-menu-danger { color: var(--caw-danger); }
+.caw-menu-item[aria-disabled='true'], .caw-sheet-row:disabled { color: var(--caw-muted); cursor: not-allowed; }
+.caw-sheet-rows { display: grid; border-top: 1px solid var(--caw-border); }
+.caw-sheet-row { min-height: 52px; border-radius: 0; border-bottom: 1px solid var(--caw-border); }
+.caw-sheet-row .caw-menu-label { font-size: 15px; }
+.caw-sheet-quote {
+  padding: 4px 10px; border-left: 3px solid var(--caw-field-border); border-radius: 4px;
+  background: var(--caw-surface); font-size: 13px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.caw-sheet-confirm.caw-sheet-danger { background: var(--caw-danger); color: var(--caw-danger-text); }
+/* Chips sob a bolha. O do aluno e clicavel (tocar remove): a banda de 44px
+   passa dos 36 do desenho, e o vao de 12 deixa 4px mortos ate o vizinho. */
+.caw-reactions { display: flex; gap: 12px; margin-top: 4px; }
+.caw-reaction {
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+  min-width: 36px; height: 30px; padding: 0 6px; border-radius: 999px;
+  border: 1px solid var(--caw-border); background: var(--caw-bg);
+  font-size: 15px; line-height: 1;
+}
+.caw-reaction-mine { border-color: var(--caw-primary); }
+.caw-reaction-mine::after {
+  content: ''; position: absolute; left: 50%; top: 50%;
+  width: 44px; height: 44px; transform: translate(-50%, -50%);
+}
+.caw-reaction-mine:disabled::after { content: none; }
+
+/* max-width forca o wrap: sem ele, o container flex com align-items
+   flex-start cresce ate o max-content e estoura a bolha no mobile */
+/* row-gap 15px (era 6): quando as opcoes quebram de linha, as duas bandas de
+   toque de 44px crescem 5,2px por lado sobre o vao — 15px deixa 4,6px de vao
+   morto entre elas. Na horizontal 6px basta: as opcoes ja passam de 44px de
+   largura e a banda nao cresce para os lados. */
+.caw-buttons { display: flex; flex-wrap: wrap; gap: 15px 6px; margin-top: 6px; max-width: 100%; }
+.caw-btn-reply {
+  border: 1.5px solid var(--caw-primary); color: var(--caw-primary);
+  background: var(--caw-bg); border-radius: 999px; padding: 6px 14px;
+  font-size: 14px;
+}
+.caw-btn-reply:disabled { opacity: .45; cursor: default; }
+
+/* botoes CTA de link externo (ex.: portal de pagamento): preenchidos, com
+   icone de link — CTA estilo WhatsApp que abre uma URL em nova aba */
+/* gap 11px (era 6): CTA de 37,5px cresce 3,25px por lado ate os 44 — sobra
+   4,5px de vao morto entre dois CTAs empilhados */
+.caw-ctas { display: flex; flex-direction: column; gap: 11px; margin-top: 6px; max-width: 100%; }
+.caw-btn-cta {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  background: var(--caw-primary); color: var(--caw-primary-text);
+  border: none; border-radius: 12px; padding: 10px 14px;
+  font-size: 14px; font-weight: 600; text-decoration: none; cursor: pointer;
+}
+.caw-btn-cta:hover { filter: brightness(.94); }
+.caw-btn-cta-ico { display: inline-flex; width: 16px; height: 16px; flex: 0 0 auto; }
+.caw-btn-cta-ico svg { width: 100%; height: 100%; fill: currentColor; }
+/* rotulo (acao) + contexto opcional (ex.: curso) empilhados */
+.caw-btn-cta-text { display: flex; flex-direction: column; align-items: center; min-width: 0; }
+.caw-btn-cta-label { line-height: 1.25; }
+.caw-btn-cta-ctx {
+  font-size: 12px; font-weight: 500; opacity: .8; line-height: 1.25;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;
+}
+
+/* Alvo de toque dos botoes de acao da conversa — opcao do flow, CTA de link e
+   "iniciar nova conversa". Os tres ja passam de 44px de LARGURA (93+, 253 e
+   166); falta altura (33,6 / 37,5 / 35,6px), e so ela cresce.
+   A banda cresce sobre o vao entre os grupos, entao os vaos foram dimensionados
+   para ela (gaps acima e margens abaixo): com os 6px originais duas bandas se
+   sobrepunham e o vao virava do vizinho que pinta depois — medido, um toque 3px
+   abaixo de "Financeiro" enviava "Outro assunto" (misroute silencioso), e sob a
+   ultima opcao vem a linha de avaliacao, onde o mesmo engano MANDA uma nota.
+   Todo vao morto ficou em >=4px porque o hit-test do browser e ~1px generoso
+   por lado: com 2px de folga o ponto medio ainda acionava o vizinho.
+   O banner encerrado ja tinha folga (8px e 12px) e e o unico alvo do bloco. */
+.caw-btn-reply, .caw-btn-cta, .caw-ended-btn { position: relative; }
+.caw-btn-reply::after, .caw-btn-cta::after, .caw-ended-btn::after {
+  content: ''; position: absolute; left: 0; right: 0;
+  top: 50%; height: 44px; margin-top: -22px;
+}
+/* Vizinhanca entre grupos: so os pares que podem existir juntos. Mensagem de
+   texto + avaliacao — o caso comum — nao muda em nada. */
+.caw-buttons + .caw-ctas { margin-top: 13px; }
+.caw-buttons + .caw-rating, .caw-ctas + .caw-rating { margin-top: 14px; }
+
+/* avaliacao da resposta da IA (1-5): rotulo em cima, notas embaixo — a quebra
+   e proposital (ver o comentario do rotulo) */
+/* column-gap 11px (era 22): o vao VISIVEL pela metade. O passo entre centros
+   continua 49 porque a nota passou a 38px de desenho — o alvo de 44 sai quase
+   todo da propria caixa, e nao de uma banda que invade o vizinho.
+   Row-gap 18px = os 14 que a banda da nota desce abaixo do desenho + 4 de vao
+   morto. A do "Comentar" (que SEMPRE cai em linha propria: a mensagem satura em
+   288px e a fileira junta pediria 305) comeca no topo dele e pinta depois — com
+   5px a NOTA 1 respondia 44x35, e um toque sob ela abria o comentario em vez de
+   registrar a nota. */
+.caw-rating {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 18px 11px; margin-top: 5px;
+  font-size: 12px; color: var(--caw-muted);
+}
+/* O rotulo ocupa a linha inteira. Ao lado das notas a fileira pede 299px
+   (rotulo 54 + 5 notas de 38 + 5 vaos de 11) e nao cabe: em 375px passava
+   raspando e em 360px — largura de Android comum — as NOTAS quebravam em duas
+   linhas, empilhando alvos de 44px a 5px um do outro. Sozinhas ocupam 234px
+   (5 de 38 + 4 vaos de 11) e cabem ate em 320px. Refazer a conta ao mexer na
+   largura da nota ou no gap: e ela que diz se o rotulo ainda quebra.
+   O margin negativo desfaz o row-gap de 18 so aqui: entre rotulo e notas nao ha
+   duas bandas a separar (rotulo nao e clicavel), e sem ele TODA mensagem
+   avaliavel subiria 13px, nao so a ja avaliada. */
+.caw-rating-label { flex: 0 0 100%; margin-bottom: -13px; }
+.caw-rating-btn {
+  min-width: 38px; height: 26px; padding: 0 5px;
+  border: 1px solid var(--caw-border); border-radius: 8px;
+  background: var(--caw-bg); color: var(--caw-text); font-size: 12px; line-height: 1;
+}
+.caw-rating-btn:hover:not(:disabled) { border-color: var(--caw-primary); }
+.caw-rating-btn[data-selected="1"] {
+  background: var(--caw-primary); border-color: var(--caw-primary);
+  color: var(--caw-primary-text); font-weight: 600;
+}
+.caw-rating-btn:disabled { opacity: .5; cursor: default; }
+.caw-rating-comment, .caw-rating-send {
+  border: none; background: none; color: var(--caw-primary);
+  font-size: 12px; text-decoration: underline; padding: 0 4px;
+}
+.caw-rating-input {
+  flex: 1 1 140px; min-width: 0; font-size: 12px; padding: 5px 8px;
+  border: 1px solid var(--caw-border); border-radius: 8px;
+  background: var(--caw-bg); color: var(--caw-text);
+}
+.caw-rating-done { font-style: italic; }
+/* Alvo de toque da linha de avaliacao (26px de altura no desenho). A faixa livre
+   e ASSIMETRICA — 5px ate a bolha acima, horario nao clicavel abaixo: os 44px
+   descem 5px do centro (-17, nao -22) para nao cobrir a ultima linha da
+   resposta, onde um toque acidental MANDARIA uma nota. Na horizontal a banda
+   cresce so 4px por lado: sobre o padding box de 36 (a nota tem 38 e o ::after
+   mede sem as bordas) fecham os 44, e com o column-gap de 11 o passo entre
+   centros e 49 — 5px de vao morto entre notas vizinhas. LARGURA e GAP andam
+   juntos: encolher a nota sem abrir o gap poe duas bandas de 44 uma sobre a
+   outra, e o toque ambiguo entre duas notas e pior que alvo pequeno. */
+.caw-rating-btn, .caw-rating-comment, .caw-rating-send { position: relative; }
+.caw-rating-btn::after, .caw-rating-comment::after, .caw-rating-send::after {
+  content: ''; position: absolute; left: -4px; right: -4px;
+  top: 50%; height: 44px; margin-top: -17px;
+}
+/* Nos links a banda comeca no PROPRIO topo e cresce so para baixo: em painel
+   estreito a linha QUEBRA e o "Comentar" cai sob as notas, e uma banda centrada
+   roubaria o canto do botao 1 (medido: 3,3x3,6px do desenho — e o link pinta
+   depois, entao venceria). Os 44px vem dos 16,8 do rotulo + 27,2 para baixo,
+   espaco que existe porque a regra abaixo afasta o horario. min-width garante
+   os 44 de LARGURA com rotulo curto, crescendo para a direita. */
+.caw-rating-comment::after, .caw-rating-send::after {
+  top: 0; margin-top: 0; bottom: -27.2px; height: auto; min-width: 44px;
+}
+/* +6px sob a linha de avaliacao (so nela): e o que a banda do link precisa para
+   caber DENTRO da mensagem — sem isso ela avanca sobre a bolha da mensagem
+   seguinte, e banda absoluta vence caixa nao posicionada. */
+.caw-rating + .caw-meta { margin-top: 8px; }
+
+.caw-typing { display: inline-flex; gap: 4px; padding: 10px 12px; }
+.caw-typing span {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--caw-muted);
+  animation: caw-blink 1.2s infinite;
+}
+.caw-typing span:nth-child(2) { animation-delay: .2s; }
+.caw-typing span:nth-child(3) { animation-delay: .4s; }
+@keyframes caw-blink { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
+
+/* flex-wrap + row-gap servem ao aviso de IA (.caw-disclaimer), que ocupa uma
+   linha propria abaixo do composer. A linha de cima nao quebra: o input tem
+   min-width 0 e os 3 botoes somam 144px com os gaps. */
+.caw-form {
+  display: flex; flex-wrap: wrap; gap: 3px 8px; background: var(--caw-bg);
+  padding: 10px calc(10px + var(--caw-gutter)) calc(10px + var(--caw-gutter));
+  border-top: 1px solid var(--caw-border);
+}
+/* Os controles do composer moram numa PILULA unica (anexo, microfone, campo e
+   Enviar dentro da mesma moldura), como no desenho. Precisa de elemento
+   proprio: a faixa da citacao e o aviso de IA sao linhas irmas e ficam FORA da
+   moldura. O campo perde a borda dele — dois contornos concentricos. */
+.caw-row {
+  flex: 1 1 100%; min-width: 0; display: flex; align-items: center; gap: 6px;
+  padding: 5px 6px 5px 8px; border-radius: 26px;
+  border: 1px solid var(--caw-field-border); background: var(--caw-bg);
+}
+.caw-row:focus-within { border-color: var(--caw-primary); }
+/* Ultima coisa que o aluno le antes de mandar. O padding alinha o texto com o
+   INPUT, nao com o form: centrado sob "Escreva sua mensagem…", sem passar por
+   baixo dos clusters de botao (anexo+microfone = 96px a esquerda, enviar = 48 a
+   direita; 40px de botao + 8 de gap cada). balance evita 2a linha com uma
+   palavra solta.
+   Tipo miudo de proposito (10/1.25 + row-gap 3): e um rodape permanente, e cada
+   pixel dele sai da area de conversa. Nao vale abrir os 4px de vao morto que
+   dois alvos de TOQUE vizinhos exigem — texto nao recebe toque, so o
+   enviar/microfone acima recebem, e a banda deles passa 2px abaixo do circulo. */
+.caw-disclaimer {
+  flex: 0 0 100%; padding: 0px;
+  text-align: center; text-wrap: balance;
+  font-size: 10px; line-height: 1.25; color: var(--caw-muted);
+}
+/* faixa "Respondendo a ...": linha PROPRIA acima dos controles (order -1 no
+   form que ja quebra por flex-wrap), com o texto em uma linha so — a citacao
+   nao pode roubar altura do composer no celular */
+/* min-width: 0 pelo mesmo motivo do .caw-input: o minimo INTRINSECO do
+   conteudo (o trecho citado e nowrap) ignora o flex-basis, e a faixa nascia
+   com a largura do TEXTO — medido em 375px: 423px de faixa num painel de 375,
+   com o botao de cancelar inteiro fora da tela */
+.caw-reply-bar {
+  order: -1; flex: 0 0 100%; min-width: 0; display: flex; align-items: center; gap: 8px;
+  /* 8px (nao 6): a banda de toque do cancelar desce 10px abaixo do desenho e o
+     Enviar comeca logo abaixo — medido, o vao morto entre os dois era de ~3px,
+     e ali um toque errado ENVIA a mensagem em vez de cancelar a citacao */
+  margin-bottom: 8px; padding: 6px 10px; border-radius: 8px;
+  border-left: 3px solid var(--caw-primary); background: var(--caw-surface);
+  font-size: 12.5px; color: var(--caw-text);
+}
+.caw-reply-bar[hidden] { display: none; }
+.caw-reply-bar-text {
+  flex: 1; min-width: 0; white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* alvo de 44 por ::after (soma area, nao ocupa layout). Vizinhos: o texto a
+   esquerda nao e clicavel e a linha de baixo e o composer, cujos botoes tem
+   40px de caixa REAL e ficam a 6px de margem + 10 de padding — sem
+   sobreposicao de bandas. */
+.caw-reply-cancel {
+  position: relative; flex: 0 0 auto; width: 24px; height: 24px;
+  color: var(--caw-muted); font-size: 15px; line-height: 1;
+}
+.caw-reply-cancel::after {
+  content: ''; position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%); width: 44px; height: 44px;
+}
+.caw-reply-bar-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.caw-reply-bar-label { font-size: 12px; color: var(--caw-primary); }
+.caw-reply-bar-label:empty { display: none; }
+.caw-form[data-editing='1'] .caw-reply-bar-text { color: var(--caw-muted); }
+.caw-form[data-editing='1'] .caw-row { border-color: var(--caw-primary); }
+.caw-attach:disabled { opacity: .35; cursor: default; }
+/* aviso das edicoes acima da faixa; 12px embaixo: as bandas de 44 dos dois ✕
+   vizinhos ficam com 4px de vao */
+.caw-form-notice {
+  order: -2; flex: 0 0 100%; min-width: 0; display: flex; align-items: flex-start; gap: 8px;
+  margin-bottom: 12px; padding: 6px 10px; border-radius: 8px; font-size: 12.5px;
+  background: var(--caw-warn-bg); color: var(--caw-warn-text);
+}
+.caw-form-notice[data-kind='info'] { background: var(--caw-surface); color: var(--caw-text); }
+.caw-form-notice[hidden] { display: none; }
+.caw-form-notice-text { flex: 1; min-width: 0; padding-top: 3px; }
+/* browser sem MediaRecorder: o microfone nao e renderizado e a esquerda tem so
+   o anexo — sem isso o texto ficaria 48px fora do centro do input */
+.caw-form:has(.caw-mic[hidden]) .caw-disclaimer { padding-left: 0px; }
+/* min-width: 0 porque o minimo INTRINSECO do <input> (~200px) ignora o flex:1 e
+   nao deixa a linha caber: em 320px o composer estourava o painel, os botoes
+   eram espremidos de 40px para ~30 (alvo abaixo dos 44) e o Enviar terminava
+   fora da tela, cortado. */
+.caw-input {
+  flex: 1; min-width: 0; border: 0; border-radius: 999px;
+  padding: 8px 4px; font: inherit; color: var(--caw-text);
+  background: transparent;
+}
+/* o contorno de foco e da pilula (:focus-within), nao do campo dentro dela */
+.caw-input:focus-visible { outline: none; }
+.caw-attach {
+  width: 36px; height: 36px; border-radius: 50%; font-size: 18px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--caw-primary);
+}
+/* Alvo de toque 44x44 (minimo do Apple HIG/Material) sem mexer no DESENHO: os
+   circulos ficaram com 36px (o Enviar, 36 de altura) e a mesma largura no flex,
+   entao o input nao perde nenhum pixel (crescer os 3 botoes o estreitaria em
+   12px num viewport de 375px). O espaco sai de onde nao havia alvo: o padding
+   da pilula e do form acima e abaixo, e o gap de 6px entre botoes — ali o toque
+   caia no proprio <form>.
+   4px em cima/embaixo levam a altura a 44; 3px por lado fecham exatamente o gap
+   de 6px do .caw-row, sem sobrepor a area do vizinho (toque ambiguo). */
+.caw-attach, .caw-send { position: relative; }
+.caw-attach::after, .caw-send::after {
+  content: ''; position: absolute; inset: -4px -3px;
+}
+.caw-media-img { max-width: 100%; border-radius: 8px; display: block; }
+.caw-media-link { color: inherit; text-decoration: underline; }
+.caw-media-caption { margin-top: 4px; }
+
+/* player de mensagem de voz (F3) — herda a cor da bolha (clara ou escura) */
+/* 250px (era 220): o botao de velocidade entra depois do tempo e, sem a folga,
+   o "0:07 / 1:12" quebrava a linha na bolha */
+.caw-audio { display: flex; align-items: center; gap: 8px; width: 250px; max-width: 100%; }
+.caw-audio-btn {
+  width: 34px; height: 34px; border-radius: 50%; flex: none;
+  border: 1.5px solid currentColor; color: inherit;
+  display: flex; align-items: center; justify-content: center;
+}
+.caw-audio-btn svg { width: 16px; height: 16px; fill: currentColor; }
+.caw-audio-loading { animation: caw-audio-pulse 1s infinite; }
+@keyframes caw-audio-pulse { 50% { opacity: .4; } }
+.caw-audio-track { flex: 1; height: 14px; position: relative; cursor: pointer; }
+.caw-audio-track::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 5px; height: 4px;
+  border-radius: 999px; background: currentColor; opacity: .3;
+}
+.caw-audio-fill {
+  position: absolute; left: 0; top: 5px; height: 4px; width: 0;
+  border-radius: 999px; background: currentColor;
+}
+.caw-audio-time { font-size: 12px; opacity: .85; white-space: nowrap; flex: none; }
+.caw-audio-rate {
+  position: relative; flex: none; font-size: 11px; line-height: 1; padding: 4px 7px;
+  border-radius: 999px; border: 1px solid currentColor; color: inherit;
+  font-variant-numeric: tabular-nums; opacity: .85;
+}
+/* alvo de 44px sem inchar a pilula: banda absoluta alem da borda (o vizinho a
+   esquerda e o TEXTO do tempo, nao um alvo — nada e roubado dele) */
+.caw-audio-rate::after { content: ''; position: absolute; inset: -12px -8px; }
+/* "Enviar" ESCRITO, numa pilula (o desenho): a palavra diz o que o aviao de
+   papel deixava implicito. min-height 36 mantem o alvo real; a banda de toque
+   do ::after acima completa os 44. */
+.caw-send {
+  flex: none; min-height: 36px; padding: 0 16px; border-radius: 999px;
+  background: var(--caw-primary); color: var(--caw-primary-text);
+  font-size: 14px; font-weight: 700; white-space: nowrap;
+  display: flex; align-items: center; justify-content: center;
+}
+/* o enviar da GRAVACAO nao tem rotulo, so o aviao: volta a ser circular, senao
+   a pilula de 16px de padding nasce larga e vazia ao lado do timer */
+.caw-send-icon { padding: 0; width: 36px; border-radius: 50%; }
+.caw-send:disabled { opacity: .45; cursor: default; }
+.caw-send svg { width: 18px; height: 18px; fill: currentColor; }
+
+/* ---- navegacao estilo Intercom (Inicio / Mensagens / Conversa) ---- */
+.caw-hero {
+  background: var(--caw-primary); color: var(--caw-primary-text);
+  padding: calc(22px + var(--caw-gutter)) calc(20px + var(--caw-gutter)) 26px;
+  position: relative;
+}
+/* cluster de controles do hero: mesmo gap (10px) e distancia da borda (16px,
+   = padding-right do header) que os headers de lista/conversa, para o botao de
+   expandir cair na MESMA posicao em todas as telas */
+.caw-hero-top {
+  position: absolute;
+  top: calc(14px + var(--caw-gutter)); right: calc(16px + var(--caw-gutter));
+  display: flex; align-items: center; gap: 10px;
+}
+/* O expandir e o fechar sao os MESMOS botoes nas tres telas, mas o hero nao
+   virou faixa clara junto com os headers: ele segue com o fundo na primaria.
+   Sem esta regra eles herdam --caw-header-text, que nos presets claros E
+   var(--caw-primary) — o "x" sairia azul sobre azul, invisivel justamente na
+   primeira tela que o aluno ve. */
+.caw-hero .caw-expand, .caw-hero .caw-close { color: var(--caw-primary-text); }
+/* Logo da instituicao (theme.logoUrl). O wrapper mantem uma caixa de altura
+   estavel e centraliza a imagem nos dois eixos; a variante transparente
+   remove apenas o tratamento visual, sem deslocar o restante do header. */
+.caw-logo {
+  background: #fff; border-radius: 10px; padding: 6px 10px;
+  display: inline-flex; align-items: center; justify-content: center;
+  align-self: flex-start; line-height: 0;
+}
+.caw-logo-img {
+  height: 26px; max-width: 100%; display: block;
+  object-fit: contain; object-position: center;
+}
+.caw-logo-transparent {
+  width: auto; height: 38px; padding: 0;
+  background: transparent; border-radius: 0;
+}
+
+.caw-hero-greeting { font-size: 22px; font-weight: 800; margin-top: 18px; }
+.caw-hero-sub { font-size: 22px; font-weight: 800; opacity: .75; }
+
+.caw-home {
+  flex: 1; overflow-y: auto; padding: 16px calc(14px + var(--caw-gutter));
+  display: flex; flex-direction: column; gap: 12px;
+  background: var(--caw-surface);
+}
+.caw-card {
+  display: block; width: 100%; text-align: left;
+  background: var(--caw-bg); border: 1px solid var(--caw-border);
+  border-radius: var(--caw-radius); padding: 14px 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06); color: var(--caw-text);
+}
+.caw-card:hover { border-color: var(--caw-field-border); }
+.caw-card-label { font-weight: 700; font-size: 14px; margin-bottom: 6px; }
+.caw-card-row { display: flex; gap: 10px; align-items: baseline; }
+.caw-card-preview {
+  flex: 1; min-width: 0; overflow: hidden; white-space: nowrap;
+  text-overflow: ellipsis; color: var(--caw-muted); font-size: 14px;
+}
+.caw-card-time { flex: none; color: var(--caw-muted); font-size: 12.5px; }
+
+.caw-cta {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 12px 16px; border-radius: var(--caw-radius);
+  background: var(--caw-bg); border: 1px solid var(--caw-border);
+  box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  color: var(--caw-text); font-weight: 700; font-size: 15px;
+}
+.caw-cta:hover { border-color: var(--caw-field-border); }
+.caw-cta-icon { display: flex; color: var(--caw-primary); }
+.caw-cta-icon svg { width: 18px; height: 18px; fill: currentColor; }
+.caw-list .caw-cta { margin-top: auto; }
+
+.caw-list {
+  flex: 1; overflow-y: auto; padding: 10px calc(12px + var(--caw-gutter)) 14px;
+  display: flex; flex-direction: column; gap: 8px;
+  background: var(--caw-bg);
+}
+.caw-list-item {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  text-align: left; padding: 12px 10px; border-radius: 10px;
+  color: var(--caw-text);
+}
+.caw-list-item:hover { background: var(--caw-surface); }
+.caw-list-avatar {
+  flex: none; width: 38px; height: 38px; border-radius: 50%;
+  background: var(--caw-primary); color: var(--caw-primary-text);
+  display: flex; align-items: center; justify-content: center;
+}
+.caw-list-avatar svg { width: 19px; height: 19px; fill: currentColor; }
+.caw-list-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.caw-list-preview {
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  font-size: 14.5px;
+}
+.caw-list-meta { color: var(--caw-muted); font-size: 12.5px; }
+.caw-dot {
+  flex: none; width: 9px; height: 9px; border-radius: 50%;
+  background: var(--caw-danger);
+}
+.caw-list-chevron { flex: none; color: var(--caw-muted); font-size: 20px; }
+.caw-list-empty {
+  color: var(--caw-muted); text-align: center; padding: 28px 10px 16px;
+}
+
+.caw-nav {
+  display: flex; border-top: 1px solid var(--caw-border);
+  background: var(--caw-bg);
+  /* base do painel nas telas Inicio/Mensagens (a conversa termina no composer) */
+  padding-bottom: var(--caw-gutter);
+}
+.caw-nav[hidden] { display: none; }
+.caw-tab {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 8px 0 10px; color: var(--caw-muted); font-size: 12.5px;
+  position: relative;
+}
+.caw-tab[aria-selected='true'] { color: var(--caw-primary); font-weight: 700; }
+.caw-tab-icon { display: flex; }
+.caw-tab-icon svg { width: 21px; height: 21px; fill: currentColor; }
+.caw-tab-badge {
+  position: absolute; top: 4px; right: calc(50% - 22px);
+  min-width: 17px; height: 17px; border-radius: 9px; padding: 0 4px;
+  background: var(--caw-danger); color: var(--caw-danger-text);
+  font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.caw-tab-badge[hidden] { display: none; }
+
+/* Hamburguer que abre a gaveta de historico, no lugar do antigo ‹. E o UNICO
+   botao solido do header — na faixa clara ele carrega a cor da marca, e e o
+   que abre a navegacao. */
+.caw-menu {
+  flex: none; display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 10px;
+  background: var(--caw-primary); color: var(--caw-primary-text);
+}
+.caw-menu:hover { opacity: .9; }
+.caw-menu svg { width: 18px; height: 18px; fill: currentColor; display: block; }
+
+/* ---- gaveta de historico ----
+   Ancorada no PAINEL (que e position:absolute), entao acompanha o painel
+   expandido e o fullscreen sem medida propria, e o overflow:hidden dele ja a
+   recorta. O top vem inline da WidgetUI (altura MEDIDA do header): a gaveta
+   comeca abaixo da faixa azul, com o hamburguer que a abriu ainda a vista. */
+/* Fundo LEVE (.24, nao .38): a gaveta e um menu lateral, nao um modal que
+   interrompe — a conversa atras precisa continuar legivel. Entra e sai por
+   opacidade, junto com o deslize. */
+/* pointer-events acompanha o ESTADO, nao a opacidade: quem esconde o no e o
+   timer da WidgetUI, no fim da saida, entao por 220ms depois de fechar
+   o fundo invisivel ainda cobriria o painel inteiro — o toque seguinte do aluno
+   (no campo, num botao da bolha) morreria nele, sem nada na tela para explicar
+   por que. */
+.caw-scrim {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,.24);
+  opacity: 0; transition: opacity 220ms ease;
+  pointer-events: none;
+  z-index: 3;
+}
+.caw-root[data-drawer='open'] .caw-scrim { opacity: 1; pointer-events: auto; }
+.caw-scrim[hidden] { display: none; }
+/* Desliza pela lateral em vez de aparecer de uma vez. Fechada ela anda 100%
+   da PROPRIA largura mais 30px: sem a folga extra, a sombra (que se espalha
+   24px para a direita) ficaria borrada na beira esquerda do painel com a
+   gaveta ja fora de cena. Quem esconde o no de verdade e a WidgetUI, no fim da
+   transicao — antes disso ele segue no DOM para o movimento existir. */
+.caw-drawer {
+  position: absolute; left: 0; bottom: 0;
+  width: min(300px, 84%);
+  display: flex; flex-direction: column;
+  background: var(--caw-bg); color: var(--caw-text);
+  box-shadow: 6px 0 24px rgba(0,0,0,.18);
+  transform: translateX(calc(-100% - 30px));
+  transition: transform 220ms cubic-bezier(.22,.61,.36,1);
+  /* o gutter entra so nas bordas EXTERNAS (esquerda e base), como nas demais
+     areas: a borda direita da gaveta e interna ao painel */
+  padding: 0 14px var(--caw-gutter) calc(14px + var(--caw-gutter));
+  z-index: 4;
+}
+.caw-root[data-drawer='open'] .caw-drawer { transform: translateX(0); }
+.caw-drawer[hidden] { display: none; }
+/* Quem pediu menos movimento nao perde a gaveta, so o deslize: o estado final
+   e o mesmo, e o timer da WidgetUI nao depende de transitionend justamente
+   para nao travar aqui (sem transicao, transitionend nao dispara). */
+@media (prefers-reduced-motion: reduce) {
+  .caw-drawer, .caw-scrim, .caw-launcher-msg,
+  .caw-sched-detail, .caw-sched-chev { transition: none; }
+}
+.caw-drawer .caw-logo { align-self: center; margin: 14px 0 12px; }
+.caw-drawer-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 0 10px; border-top: 1px solid var(--caw-border);
+}
+.caw-drawer-title {
+  flex: 1; min-width: 0; font-weight: 700; font-size: 16px;
+  color: var(--caw-primary);
+}
+.caw-drawer-close {
+  color: var(--caw-muted); font-size: 15px; line-height: 1; padding: 4px 6px;
+  position: relative;
+}
+/* alvo de 44px sobre o padding, sem ocupar layout (mesmo recurso do fechar) */
+.caw-drawer-close::after {
+  content: ''; position: absolute; left: 50%; width: 44px; margin-left: -22px;
+  top: 50%; height: 44px; margin-top: -22px;
+}
+.caw-drawer-new {
+  background: var(--caw-primary); color: var(--caw-primary-text);
+  border-radius: var(--caw-radius); padding: 12px 14px; margin-bottom: 12px;
+  font-weight: 700; font-size: 14.5px; text-align: center;
+}
+.caw-drawer-list {
+  flex: 1; min-height: 0; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 8px;
+  padding-bottom: 12px;
+}
+.caw-drawer-item {
+  display: flex; align-items: center; gap: 8px; text-align: left;
+  border: 1px solid var(--caw-border); border-radius: 10px;
+  padding: 11px 12px; font-size: 14px;
+  background: var(--caw-bg); color: var(--caw-text);
+}
+.caw-drawer-item:hover { border-color: var(--caw-field-border); }
+/* Conversa aberta. O destaque sai dos TOKENS (borda primaria + fundo de
+   superficie), nunca de um azul fixo: com o preset escuro um realce claro
+   apagaria o proprio texto que ele deveria destacar. */
+.caw-drawer-item[aria-current='true'] {
+  border-color: var(--caw-primary); background: var(--caw-surface);
+  font-weight: 600;
+}
+.caw-drawer-item-label {
+  flex: 1; min-width: 0;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+
+/* ---- gravacao de audio (microfone) ---- */
+.caw-attach svg { width: 19px; height: 19px; fill: currentColor; }
+.caw-form[data-recording='1'] .caw-attach:not(.caw-mic),
+.caw-form[data-recording='1'] .caw-mic,
+.caw-form[data-recording='1'] .caw-input,
+.caw-form[data-recording='1'] .caw-row > .caw-send { display: none; }
+.caw-rec { flex: 1; display: flex; align-items: center; gap: 10px; }
+.caw-rec[hidden] { display: none; }
+.caw-rec-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--caw-danger); animation: caw-pulse 1.1s infinite;
+}
+@keyframes caw-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+.caw-rec-timer { font-variant-numeric: tabular-nums; min-width: 38px; }
+.caw-rec-cancel {
+  margin-left: auto; color: var(--caw-muted); font-size: 14px;
+  text-decoration: underline; padding: 6px 8px;
+  position: relative;
+}
+/* Alvo mais critico do composer: a 10px do Cancelar esta o botao que ENVIA o
+   audio, entao errar por pouco manda ao atendimento o que o aluno queria
+   descartar. O rotulo tem 31,6px de altura (14px x 1.4 + 12px de padding) e a
+   largura ja passa de 44px — cresce so a ALTURA, e FIXA em 44px: inset
+   simetrico depende do line-height e pararia em 43,6px. Nao e min-height
+   porque a linha de gravacao tem 40px e o composer saltaria ao comecar a
+   gravar; o pseudo-elemento nao ocupa layout e sobra nos 10px de padding do
+   form, onde nao havia alvo. Os 2px laterais, com os 2px do enviar, deixam
+   6px entre as duas areas de toque. */
+.caw-rec-cancel::after {
+  content: ''; position: absolute; left: -2px; right: -2px;
+  top: 50%; height: 44px; margin-top: -22px;
+}
+
+.caw-panel > [hidden] { display: none; }
+
+/* T4.4: mobile vira fullscreen — expandir nao faz sentido (ja ocupa a tela) */
+@media (max-width: 480px) {
+  .caw-panel, .caw-panel[data-expanded='1'] {
+    position: fixed; inset: 0; width: 100%; height: 100%;
+    max-height: none; border-radius: 0; bottom: 0;
+  }
+  .caw-expand { display: none; }
+  .caw-root[data-open='1'][data-controls='hidden']:not([data-launcher='hidden']) .caw-panel {
+    padding-bottom: calc(var(--caw-launcher-size) + 20px);
+  }
+}
+
+/* Bolha fora de cena com o chat aberto no celular (fechar esta no x do header;
+   em tela cheia ela ainda cobria o composer). Largura sozinha nao bastava: o
+   telefone em PAISAGEM tem 812x375 e passava de 481px — dai o toque sem hover
+   no OR, que o mouse nao casa. hideControls fora: ali ela e a UNICA saida. */
+@media (max-width: 480px), (hover: none) and (pointer: coarse) {
+  .caw-root[data-open='1']:not([data-controls='hidden']) .caw-launcher { display: none; }
+}
+
+
+.caw-root { font-family: 'Inter', system-ui, sans-serif; }
+
+/* Recortado no cartão da página (ver ancorarChat). Vence a tela cheia e o
+   breakpoint de celular do widget. */
+.caw-root .caw-panel,
+.caw-root .caw-panel[data-expanded='1'] {
+  position: fixed !important;
+  inset: auto !important;
+  top: var(--anchy-chat-top, 0) !important;
+  left: var(--anchy-chat-left, 0) !important;
+  width: var(--anchy-chat-w, 100vw) !important;
+  height: var(--anchy-chat-h, 100vh) !important;
+  max-height: none !important;
+  border-radius: var(--radius-panel) !important;
+  box-shadow: none !important;
+  padding-bottom: 0 !important;
+  transition: none !important;
+}
+
+/* Sem a tela "Início" nem as abas: o aluno já escolheu, cai direto na conversa. */
+.caw-hero, .caw-home, .caw-nav { display: none !important; }
+
+/* Texto azul no escuro é o azul-claro (--link), nunca o azul da marca. */
+.caw-welcome-title, .caw-welcome-sub, .caw-sender, .caw-cta-secondary { color: var(--link) !important; }
+.caw-welcome-title { font-weight: 700; }
+.caw-welcome-sub { color: var(--text-muted) !important; opacity: 1; }
+
+/* Atalhos e compositor: o widget pinta de --caw-primary, que no escuro some. */
+.caw-chip { color: var(--link); border-color: var(--line); background: var(--surface); }
+.caw-chip:hover { background: var(--soft); }
+.caw-chip:focus-visible { outline-color: var(--link); }
+.caw-row:focus-within, .caw-form[data-editing='1'] .caw-row { border-color: var(--link); }
+.caw-attach { color: var(--link) !important; }

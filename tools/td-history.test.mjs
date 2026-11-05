@@ -1,0 +1,21 @@
+import assert from 'node:assert/strict';
+import {HISTORY_KEY,conversationTitle,emptyService,readConversations,upsertConversation,writeConversations} from '../anchy-clone/src/conversationHistory.ts';
+const data=new Map();globalThis.localStorage={getItem:key=>data.get(key)||null,setItem:(key,value)=>data.set(key,value)};
+const make=(id,stamp)=>({id,createdAt:stamp,updatedAt:stamp,title:'Conversa '+id,messages:[{id:'question-'+id,role:'user',text:'Pergunta '+id}],histories:{'course:a':[{role:'user',text:'Pergunta '+id}]},draft:'Rascunho',domain:'study',pending:null,course:{id:'a',name:'Matéria A'},screen:'study',service:emptyService()});
+assert.deepEqual(readConversations(),{items:[],activeId:null});
+const a=make('a',1),b=make('b',2);
+let items=upsertConversation([],a);items=upsertConversation(items,b);
+assert.deepEqual(items.map(c=>c.id),['b','a']);
+items=upsertConversation(items,{...a,updatedAt:3});assert.deepEqual(items.map(c=>c.id),['a','b']);
+assert.equal(items.length,2);
+assert.equal(writeConversations({items,activeId:'b'}),true);
+assert.deepEqual(readConversations(),{items,activeId:'b'});
+assert.equal(conversationTitle([{id:'a',role:'user',text:' Minha\n dúvida '}],emptyService()),'Minha dúvida');
+assert.equal(upsertConversation(items,{...a,id:'empty',draft:'',messages:[],service:emptyService()}).length,2);
+data.set(HISTORY_KEY,'invalid json');assert.deepEqual(readConversations(),{items:[],activeId:null});
+data.set(HISTORY_KEY,JSON.stringify({items:[{id:'corrupt'},b],activeId:'b'}));assert.deepEqual(readConversations().items,[b]);
+globalThis.localStorage.setItem=()=>{throw Error('Quota exceeded');};assert.equal(writeConversations({items,activeId:'a'}),false);
+assert.equal(items.length,2);
+assert.equal(upsertConversation([],{...a,messages:[]}).length,1);
+
+console.log('13 verificações de histórico passaram.');

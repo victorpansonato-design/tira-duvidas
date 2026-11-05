@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
+    />
+    <meta name="theme-color" content="#0c0c0c" />
+    <meta
+      name="description"
+      content="Tire dúvidas sobre sua matéria ou sobre serviços da UniAnchieta em um só lugar."
+    />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Tira-dúvidas | UniAnchieta</title>
+    <link rel="icon" href="/assets/logo_dark_mode-CS6ykYrL.png" />
+    <link rel="stylesheet" href="/assets/fonts.css" />
+  </head>
+  <body>
+    <script>
+      try {
+        document.documentElement.dataset.theme =
+          localStorage.getItem("tiraduvidas.theme.v2") === "light"
+            ? "light"
+            : "dark";
+      } catch {}
+    </script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

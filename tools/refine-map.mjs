@@ -1,0 +1,18 @@
+import {readFileSync,writeFileSync} from 'node:fs';
+const path='anchy-clone/src/MindMap.tsx';let s=readFileSync(path,'utf8');
+s=s.replace('expanded?:boolean;selected?', 'expanded?:boolean;height?:number;selected?');
+s=s.replace('style={{width:180,minHeight:70}}','style={{width:180,minHeight:data.height||62}}').replace('style={{minHeight:70}}','style={{minHeight:data.height||62}}');
+s=s.replace('className="text-base font-bold leading-tight"','className="text-sm font-bold leading-tight"').replace('className="text-[11px] mt-1"','className="mt-1 text-xs leading-tight opacity-85"');
+s=s.replace('className={\'nodrag w-full flex','style={{minHeight:96}} className={\'nodrag w-full flex');
+s=s.replace('const color=`var(--ramo-${i+1})`;const y=12+i*91;', 'const color=`var(--ramo-${i%5+1})`;const y=12+i*91-(i>2?19:0);');
+s=s.replace('data:{title:topic.title,color,selected:', 'data:{title:topic.title,color,height:i===2||i===8?62:81,selected:');
+s=s.replace('extra={actions}>',`extra={actions} fullHeader={fullscreen?<div className="h-14 shrink-0 flex items-center gap-3 px-6 bg-surface border-b border-line"><Owl alt="" style={{width:32,height:32}}/><h2 className="flex-1 min-w-0 truncate text-[17px] font-bold text-ink">{discipline}<span className="text-[15px] font-medium text-ink-muted"> · Mapa mental</span></h2><button type="button" onClick={()=>void exportMap()} className="h-11 px-5 rounded-full inline-flex items-center gap-2 bg-surface border border-line text-ink"><Download size={18}/>Exportar imagem</button><button type="button" onClick={()=>setFullscreen(false)} className="h-11 px-5 rounded-full inline-flex items-center gap-2 bg-surface border border-line text-ink"><Minimize size={18}/>Sair da tela cheia</button></div>:undefined}>`);
+s=s.replace('className="relative flex-1 min-w-0" ref={mapRef}','className="relative flex-1 min-w-0 bg-surface-2" ref={mapRef}');
+s=s.replace('className="map-detail bg-surface border-line"','aria-label={"Detalhe: "+(detail?.title||discipline)} className="map-detail bg-surface border border-line shadow-float rounded-card"');
+writeFileSync(path,s);
+const cssPath='anchy-clone/src/styles.css';let css=readFileSync(cssPath,'utf8');
+css=css.replace(/\.map-detail\{[^}]+\}/,'');
+css=css.replace('.map-fullscreen{position:fixed;inset:16px;', '.map-fullscreen{position:fixed;inset:0;');
+css=css.replace(/\.tool-chat-layout\.with-chat\{[^}]+\}/g,'').replace(/\.study-chat\{[^}]+\}/g,'').replace(/ \.with-chat[^}]+\}/g,'');
+css+='\n.map-detail{position:absolute;right:16px;top:80px;bottom:16px;width:320px;display:flex;flex-direction:column;overflow:hidden;z-index:40}\n@media(max-width:1023px){.map-detail{top:auto;left:0;right:0;bottom:0;width:100%;height:380px;max-height:60%;border-bottom:0;border-radius:24px 24px 0 0}}\n';
+writeFileSync(cssPath,css);console.log('Map and auxiliary conversation aligned with original');

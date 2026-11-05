@@ -1,0 +1,28 @@
+(async()=>{
+ const results=[];const wait=ms=>new Promise(r=>setTimeout(r,ms));const until=async(fn,label)=>{const end=Date.now()+15000;while(!fn()){if(Date.now()>end)throw Error(label);await wait(40);}};
+ const button=label=>[...document.querySelectorAll('button')].find(b=>b.getClientRects().length&&!b.closest('dialog:not([open])')&&(b.getAttribute('aria-label')===label||b.textContent.trim()===label));
+ const click=async label=>{const b=button(label);if(!b||b.disabled)throw Error('Botão '+label);b.click();await wait(600);};
+ const assert=(ok,label)=>{if(!ok)throw Error(label);results.push(label);};
+ document.querySelector('.td-history-item[aria-current=page]').click();await wait(350);
+ assert(!!document.querySelector('.td-answer-text'),'Selecionar conversa atual preserva estudo');
+ await click('Nova conversa');if(button('Texto')?.getAttribute('aria-pressed')!=='true')await click('Texto');
+ const text='Onde peço meu atestado de matrícula?';const input=document.querySelector('#pergunta');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(input,text);input.dispatchEvent(new Event('input',{bubbles:true}));await wait(50);await click('Enviar pergunta');
+ await click('Ir para o atendimento');await until(()=>document.querySelector('.td-institution-view section > div')?.shadowRoot?.querySelector('.caw-input'),'Atendimento original');
+ const root=()=>document.querySelector('.td-institution-view section > div').shadowRoot;
+ assert(root().querySelector('.caw-title').textContent==='Chat Anchieta','Tela original de atendimento restaurada');
+ assert(root().querySelector('.caw-input').value===text,'Pergunta preservada no campo do atendimento');
+ assert(root().querySelectorAll('.demo-message').length===0,'Sem envio automático ao atendimento');
+ root().querySelector('.caw-send').click();await until(()=>root().querySelectorAll('.demo-message:not([role=status])').length===2,'Resposta institucional local');
+ assert(!root().textContent.includes('Comunicar-se de forma assertiva'),'Atendimento não recebe conteúdo da conversa de estudo');
+ root().querySelector('.caw-menu').click();await wait(400);
+ assert(document.querySelectorAll('.td-history-item').length>=2,'Histórico guarda conversas distintas');
+ const study=[...document.querySelectorAll('.td-history-item')].find(b=>b.textContent.includes('assertiva'));study.click();await until(()=>!!document.querySelector('#pergunta'),'Voltar para estudo');await wait(400);
+ assert(document.querySelector('.td-answer-text').textContent.includes('respeito'),'Retomada restaura resposta da disciplina');
+ assert(!document.querySelector('.td-institution-view'),'Retomada troca a tela de atendimento pela conversa de estudo');
+ await click('Histórico de conversas');const service=[...document.querySelectorAll('.td-history-item')].find(b=>b.textContent.includes('atestado'));service.click();await until(()=>document.querySelector('.td-institution-view section > div')?.shadowRoot?.querySelector('.demo-message'),'Retomar atendimento');await wait(350);
+ assert(root().querySelectorAll('.demo-message:not([role=status])').length===2,'Retomada restaura mensagens de atendimento');
+ await click('Voltar ao Tira-dúvidas');await until(()=>!!document.querySelector('#pergunta'),'Retorno ao chat');await wait(350);
+ assert(!document.querySelector('#pergunta').readOnly,'Voltar ao chat libera o campo');
+ await click('Continuar no atendimento');await until(()=>document.querySelector('.td-institution-view section > div')?.shadowRoot?.querySelector('.demo-message'),'Atendimento antes de recarregar');assert(root().querySelectorAll('.demo-message:not([role=status])').length===2,'Retornar ao atendimento preserva mensagens');
+ return results;
+})();

@@ -1,0 +1,26 @@
+(async()=>{
+ const out=[];const wait=ms=>new Promise(r=>setTimeout(r,ms));const until=async(fn,label)=>{const end=Date.now()+12000;while(!fn()){if(Date.now()>end)throw Error(label);await wait(40);}};
+ const button=label=>[...document.querySelectorAll('button')].find(b=>b.getClientRects().length&&!b.closest('dialog:not([open])')&&(b.getAttribute('aria-label')===label||b.textContent.trim()===label));
+ const click=async label=>{const b=button(label);if(!b||b.disabled)throw Error('Botão indisponível '+label);b.click();await wait(380);};
+ const assert=(ok,label)=>{if(!ok)throw Error(label);out.push(label);};
+ await until(()=>button('Voz'),'Modo disponível');
+ assert(button('Voz').getAttribute('aria-pressed')==='true','Voz é o modo inicial');
+ assert(document.querySelector('.td-mode-switch').closest('form')!==null,'Seletor fica dentro do compositor');
+ assert(document.querySelector(document.querySelector('.td-skip').getAttribute('href'))!==null,'Atalho de teclado tem destino no modo voz');
+ assert(!document.querySelector('dialog[open]'),'Entrar na página não abre solicitação de microfone');
+ await click('Texto');await until(()=>document.querySelector('#pergunta'),'Campo de texto');
+ const field=document.querySelector('#pergunta');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(field,'Meu rascunho fica aqui');field.dispatchEvent(new Event('input',{bubbles:true}));await wait(50);
+ await click('Voz');await click('Texto');
+ assert(document.querySelector('#pergunta').value==='Meu rascunho fica aqui','Troca de modo preserva rascunho');
+ await click('Voz');await click('Iniciar conversa por voz');
+ assert(document.querySelector('dialog[open]')?.getAttribute('aria-label')==='Vamos conversar por voz?','Primeiro toque explica a demonstração');
+ assert(document.querySelector('dialog[open]').textContent.includes('nenhum áudio será gravado'),'Prévia não promete captura real');
+ await click('Agora não');assert(!document.querySelector('dialog[open]'),'Agora não fecha sem começar');
+ await click('Iniciar conversa por voz');await click('Experimentar conversa');
+ assert(!!document.querySelector('.is-demonstrating'),'Estado de demonstração aparece');
+ await click('Cancelar demonstração de voz');await wait(2500);
+ await click('Texto');assert(!document.querySelector('.td-user-message'),'Cancelar impede envio tardio');
+ assert(document.querySelector('#pergunta').value==='Meu rascunho fica aqui','Cancelar conserva rascunho');
+ await click('Voz');await click('Iniciar conversa por voz');
+ return out;
+})();

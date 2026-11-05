@@ -1,0 +1,1 @@
+JSON.stringify({viewport:[innerWidth,innerHeight],styles:[...document.styleSheets].map(s=>({href:s.href,count:s.cssRules?.length})),images:[...document.images].map(i=>({src:i.getAttribute('src'),alt:i.alt})),scripts:[...document.scripts].filter(s=>s.src).map(s=>s.src),body:document.body.className})

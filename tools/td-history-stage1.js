@@ -1,0 +1,22 @@
+(async()=>{
+ const wait=ms=>new Promise(r=>setTimeout(r,ms));const until=async(fn,label)=>{const end=Date.now()+15000;while(!fn()){if(Date.now()>end)throw Error(label);await wait(40);}};
+ const visible=e=>e.getClientRects().length&&!e.closest('dialog:not([open])');
+ const button=label=>[...document.querySelectorAll('button')].filter(visible).find(b=>b.getAttribute('aria-label')===label||b.textContent.trim()===label);
+ const click=async label=>{const b=button(label);if(!b||b.disabled)throw Error('Botão indisponível: '+label);b.click();await wait(400);};
+ const setValue=(el,text)=>{Object.getOwnPropertyDescriptor(el instanceof HTMLTextAreaElement?HTMLTextAreaElement.prototype:HTMLInputElement.prototype,'value').set.call(el,text);el.dispatchEvent(new Event('input',{bubbles:true,composed:true}));};
+ await until(()=>button('Voltar ao Tira-dúvidas')||button('Nova conversa'),'Tela inicial carregada');
+ if(button('Voltar ao Tira-dúvidas'))await click('Voltar ao Tira-dúvidas');
+ await until(()=>button('Nova conversa'),'Chat carregado');
+ if(!button('Nova conversa').disabled)await click('Nova conversa');
+ await click('Histórico de conversas');await until(()=>document.querySelector('.td-history-dialog[open]'),'Histórico abriu');
+ document.querySelector('.td-history-dialog').dispatchEvent(new Event('cancel',{cancelable:true}));
+ await wait(70);if(!document.querySelector('.td-history-dialog[open]')||!document.querySelector('.td-history-dialog').getAnimations().length)throw Error('Fechamento deveria continuar animado');await wait(300);
+ if(button('Texto')?.getAttribute('aria-pressed')!=='true')await click('Texto');
+ await click('Entender um conceito');await click('Enviar pergunta');await until(()=>!document.querySelector('#pergunta').readOnly,'Resposta pronta');
+ await click('Histórico de conversas');
+ if(!document.querySelector('.td-history-item[aria-current=page]')?.textContent.includes('assertiva'))throw Error('Conversa atual ausente');
+ const search=document.querySelector('#td-history-search');setValue(search,'palavra inexistente qwerty');await wait(80);if(!document.body.textContent.includes('Nenhuma conversa encontrada'))throw Error('Busca vazia');setValue(search,'assertiva');await wait(80);if(!document.querySelector('.td-history-item'))throw Error('Busca não encontrou conversa');setValue(search,'');await wait(80);
+ const rail=document.querySelector('.td-study-rail').getBoundingClientRect();const drawer=document.querySelector('.td-history-dialog').getBoundingClientRect();
+ if(Math.abs(drawer.right-rail.right)>1||Math.abs(drawer.top-rail.top)>1||Math.abs(drawer.width-rail.width)>1)throw Error('Histórico não cobre o caderno precisamente');
+ return {history:'salva conversa real, indica atual e busca por conteúdo',motion:'fechamento continua animado antes de retirar painel',overlay:'mesmas bordas do caderno',externalRequests:performance.getEntriesByType('resource').filter(r=>new URL(r.name).origin!==location.origin).map(r=>r.name)};
+})();
